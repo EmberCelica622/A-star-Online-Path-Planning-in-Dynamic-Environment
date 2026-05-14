@@ -1,0 +1,49 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Logs
+*.log
+logs/
+runs/
+tensorboard/
+tb_logs/
+*.png
+*.zip
+*.pdf
+
+# RL / ML outputs
+checkpoints/
+models/
+saved_models/
+weights/
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.pickle
+*.onnx
+
+# MuJoCo / simulation outputs
+videos/
+recordings/
+renders/
+results/
+output/
+outputs/
+
+# Data
+data/
+datasets/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
