@@ -4,12 +4,11 @@ from scipy.interpolate import splprep, splev
 
 
 class AStarPlanner:
-    def __init__(self, env, lambda_uncertainty=2.5, lambda_belief=3.0, diagonal=True, fused_map=False):
+    def __init__(self, env, lambda_uncertainty=2.5, lambda_belief=3.0, diagonal=True):
         self.env = env
         self.lambda_uncertainty = lambda_uncertainty
         self.lambda_belief = lambda_belief
         self.diagonal = diagonal
-        self.fused_map = fused_map
 
         if diagonal:
             self.moves = [
@@ -37,10 +36,7 @@ class AStarPlanner:
         move_cost = abs(dx) + abs(dy)
 
         entropy_cost = self.env.entropy[nxt[1], nxt[0]]
-        if self.fused_map:
-            belief_cost = self.env.fused_belief[nxt[1],nxt[0]]
-        else:
-            belief_cost = self.env.belief[nxt[1], nxt[0]]
+        belief_cost = self.env.belief[nxt[1], nxt[0]]
 
         return (
             move_cost

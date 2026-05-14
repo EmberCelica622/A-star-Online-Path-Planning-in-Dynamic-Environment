@@ -1,26 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import shutil
 
-from env import GridEnvironment, MovingObstacle
+from env import GridEnvironment
 from planner import AStarPlanner, prune_path, smooth_path, compute_path_metrics
 from controller import DifferentialDriveRobot, TrajectoryTracker, build_reference_trajectory
 
-
-def prepare_output_dir(folder_name="online_plots"):
-    """
-    Create a fresh output directory next to this script.
-    If the folder already exists, delete it first.
-    """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(script_dir, folder_name)
-
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-
-    os.makedirs(output_dir, exist_ok=True)
-    return output_dir
 
 def plot_belief_and_entropy(env, start, goal):
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
@@ -162,28 +147,22 @@ def main():
     # --------------------------------------------------
     # 1. Build environment
     # --------------------------------------------------
-    env = GridEnvironment(width=100, height=100, resolution=0.25, robot_radius=0.25)
-    env.create_mall_map()
+    env = GridEnvironment(width=60, height=40, resolution=0.2, robot_radius=0.2)
+    env.create_demo_map()
     env.inflate_obstacles()
+
+    # Build entropy-based uncertainty
     env.build_belief_map(observed_region="none", p_free=0.1, p_occ=0.9)
-    env.build_experience_map()
-    env.update_fused_belief(exp_weight=0.9)
-    moving_obstacles = [
-        MovingObstacle(x=20, y=16, speed=0.8, axis="y", y_min=10, y_max=74, radius=2),
-        MovingObstacle(x=20, y=29, speed=0.6, axis="x", x_min=12, x_max=42, radius=2),
-        MovingObstacle(x=69, y=55, speed=0.9, axis="x", x_min=64, x_max=80, radius=2),
-        MovingObstacle(x=34, y=50, speed=-1.0, axis="y", y_min=10, y_max=74, radius=2),
-    ]
 
     # Start/goal in grid coordinates
-    start = (6, 6)
-    goal = (92, 92)
-    sensor_range = 14
+    start = (4, 4)
+    goal = (55, 35)
+    sensor_range = 10
     # env.update_belief_from_observation(start, sensor_range=sensor_range)
 
     # Visualization parameters
     plot_belief_and_entropy(env, start, goal)
-    save_dir = prepare_output_dir("online_plots")
+    save_dir = 'online_plots'
     show_online_plot = True
     save_online_plot = True
     fig_online, ax_online = None, None
@@ -207,36 +186,30 @@ def main():
     # --------------------------------------------------
     # 2. Online risk-aware A* planning
     # --------------------------------------------------
-    planner = AStarPlanner(env, lambda_uncertainty=2.0, lambda_belief=10.0, diagonal=True, fused_map=True)
+    planner = AStarPlanner(env, lambda_uncertainty=2.5, lambda_belief=3.0, diagonal=True)
 
     not_finish = True
     curr = start
     i = 0
-    horizon = 3
+    horizon = int(np.ceil(sensor_range*0.4))
 
     executed_path = [start]
-    max_iter = 300
-    goal_tolerance = 3.0
+    max_iter = 100
+    goal_tolerance = 2.0
 
     while not_finish and i < max_iter:
-        # update environment
-        for obs in moving_obstacles:
-            obs.step(env)
-        env.update_dynamic_obstacles(moving_obstacles)
         env.update_belief_from_observation(curr, sensor_range=sensor_range)
-        env.update_fused_belief(exp_weight=0.9)
-        # update planning path
+
         full_path = planner.plan(curr, goal)
         if full_path is None:
             print(f"No feasible path found at posistion {curr}")
             return
-
+        
         local_horizon = min(horizon, len(full_path))
         raw_path = full_path[:local_horizon]
 
         for pos in raw_path[1:]:
             env.update_belief_from_observation(pos, sensor_range=sensor_range)
-            env.update_fused_belief(exp_weight=0.9)
 
         metrics_raw = compute_path_metrics(env, raw_path)
 
@@ -300,7 +273,7 @@ def main():
             step_idx=i,
             fig=fig_online,
             ax=ax_online,
-            pause_time=0.2,
+            pause_time=0.4,
             show_plot=show_online_plot,
             save_plot=save_online_plot,
             save_dir=save_dir)
